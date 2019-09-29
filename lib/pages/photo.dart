@@ -9,9 +9,16 @@ import 'package:flutter_qrcode_app/themes/theme.dart';
 import 'package:flutter_qrcode_app/widgets/positive_action_button.dart';
 import 'package:flutter_qrcode_app/widgets/show_error_sheet.dart';
 import 'dart:convert';
+import 'package:xml/xml.dart' as xml;
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class PhotoUploadPage extends StatefulWidget {
+  final List<Map> pushData;
+
+  const PhotoUploadPage({Key key, this.pushData}) : super(key: key);
+
   @override
   State<StatefulWidget> createState() => _PhotoUploadPageState();
 }
@@ -26,6 +33,7 @@ class _PhotoUploadPageState extends State<PhotoUploadPage> {
   @override
   void initState() {
     super.initState();
+    print(widget.pushData);
   }
 
   @override
@@ -33,33 +41,40 @@ class _PhotoUploadPageState extends State<PhotoUploadPage> {
     super.dispose();
   }
 
-  void _uploadAndPushToHome() async {
-     String encodedImage = Config.KEY_NO_IMAGE;
+  Future<HttpClientResponse> _sendOTP() async {
+    String encodedImage = Config.KEY_NO_IMAGE;
     _formKey.currentState.save();
-    setState(() => _isLoading = true);
+
     if (_currentImage != null && _currentImage != "") {
-       encodedImage = Base64Codec().encode(_currentImage.readAsBytesSync());
+      encodedImage = Base64Codec().encode(_currentImage.readAsBytesSync());
     }
 
-     try {
-       /*await UserService().changeProfileImage(encodedImage).then((v) {
-         preferences.setBool(Config.KEY_SHARED_HAS_APPROVED_IMAGE, true);
-        Future.delayed(Duration(seconds: 1)).then((_) {
-           return Navigator.of(context).canPop()
-               ? Navigator.of(context).pushNamed("/home/home")
-               : Navigator.of(context).pushReplacementNamed("/home/home");
-         });
-       }).catchError((e) {
-         throw e;
-       }).whenComplete(() {
-         print("service call complete");
-         setState(() => _isLoading = false);
-       });*/
-     } catch (e) {
-       showErrorSheet(context: context, error: e);
-     }
+    var builder = new xml.XmlBuilder();
+    builder.processing('xml', 'version="1.0" encoding="iso-8859-9"');
+    builder.element('document', nest: () {
+      builder.element('token', nest: widget.pushData[0]["token"]);
+      builder.element('data', nest: encodedImage);
+    });
+    var bookshelfXml = builder.build();
+    String _uriMsj = bookshelfXml.toString();
+    print("_uriMsj: $_uriMsj");
 
-     setState(() => _isLoading = false);
+    String _uri = widget.pushData[0]["decodedUrl"];
+    var _responseOtp = await postOTP(_uri, _uriMsj);
+    print("_responseOtp: $_responseOtp");
+  }
+
+  Future<String> postOTP(String _uri, String _message) async {
+    HttpClient client = new HttpClient();
+    HttpClientRequest request = await client.postUrl(Uri.parse(_uri));
+    request.write(_message);
+    HttpClientResponse response = await request.close();
+    StringBuffer _buffer = new StringBuffer();
+    await for (String a in await response.transform(utf8.decoder)) {
+      _buffer.write(a);
+    }
+    print("_buffer.toString: ${_buffer.toString()}");
+    return _buffer.toString();
   }
 
   @override
@@ -137,7 +152,7 @@ class _PhotoUploadPageState extends State<PhotoUploadPage> {
                               child: PositiveActionButton(
                                 child: Text("Evrakı Gönder",
                                     style: AppTheme.textButtonPositive()),
-                                onPressed: () => _uploadAndPushToHome(),
+                                onPressed: () => _sendOTP(),
                               ),
                             ),
                           ],

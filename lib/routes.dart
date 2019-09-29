@@ -5,6 +5,6 @@ import 'package:flutter_qrcode_app/pages/photo.dart';
 
 final ROUTES = {
   '/':(RouteSettings s) => HomePage(),
-  '/photo':(RouteSettings s) => PhotoUploadPage(),
+  '/photo':(RouteSettings s) => PhotoUploadPage(pushData: s.arguments),
 };
 
