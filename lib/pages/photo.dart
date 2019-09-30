@@ -4,15 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_qrcode_app/commons/config.dart';
 import 'package:flutter_qrcode_app/utils/document_file_formfield.dart';
-import 'package:flutter_qrcode_app/utils/utils.dart';
 import 'package:flutter_qrcode_app/themes/theme.dart';
 import 'package:flutter_qrcode_app/widgets/positive_action_button.dart';
+import 'package:flutter_qrcode_app/utils/dialogs.dart';
 import 'package:flutter_qrcode_app/widgets/show_error_sheet.dart';
 import 'dart:convert';
 import 'package:xml/xml.dart' as xml;
-import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_qrcode_app/services/post.dart';
 
 class PhotoUploadPage extends StatefulWidget {
   final List<Map> pushData;
@@ -27,7 +25,7 @@ class _PhotoUploadPageState extends State<PhotoUploadPage> {
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
   GlobalKey<FormState> _formKey = GlobalKey();
   bool _isLoading = false;
-
+  List<Map> _pushData = List();
   File _currentImage;
 
   @override
@@ -41,40 +39,47 @@ class _PhotoUploadPageState extends State<PhotoUploadPage> {
     super.dispose();
   }
 
-  Future<HttpClientResponse> _sendOTP() async {
-    String encodedImage = Config.KEY_NO_IMAGE;
-    _formKey.currentState.save();
+  Future<HttpClientResponse> prepareXmlData() async {
+    try {
+      print(_currentImage);
 
-    if (_currentImage != null && _currentImage != "") {
-      encodedImage = Base64Codec().encode(_currentImage.readAsBytesSync());
+      String encodedImage = Config.KEY_NO_IMAGE;
+      _formKey.currentState.save();
+
+      if (_currentImage == null) {
+        Dialogs.alert(context, "Bilgilendirme", "Lütfen önce evrakın resmini çekiniz.");
+      } else {
+        if (_currentImage != null && _currentImage != "") {
+          encodedImage = Base64Codec().encode(_currentImage.readAsBytesSync());
+        }
+
+        var builder = new xml.XmlBuilder();
+        //builder.processing('xml', 'version="1.0" encoding="iso-8859-9"');
+        builder.element('document', nest: () {
+          builder.element('token', nest: widget.pushData[0]["token"]);
+          builder.element('data', nest: encodedImage);
+        });
+        var bookshelfXml = builder.build();
+        String xmlData = bookshelfXml.toString();
+        print("xmlData: $xmlData");
+
+        String _postUrl = widget.pushData[0]["decodedUrl"];
+
+        await PostXmlService().postXml(_postUrl, xmlData).then((v) {
+          _pushData.add({"message": "Evrak başarılı bir şekilde yüklenmiştir."});
+          Navigator.of(context).pushNamedAndRemoveUntil(
+              "/success", (Route<dynamic> route) => false,
+              arguments: _pushData);
+        }).catchError((e) {
+          throw e;
+        }).whenComplete(() {
+          print("service call complete");
+          setState(() => _isLoading = false);
+        });
+      }
+    } catch (e) {
+      showErrorSheet(context: context, error: e);
     }
-
-    var builder = new xml.XmlBuilder();
-    builder.processing('xml', 'version="1.0" encoding="iso-8859-9"');
-    builder.element('document', nest: () {
-      builder.element('token', nest: widget.pushData[0]["token"]);
-      builder.element('data', nest: encodedImage);
-    });
-    var bookshelfXml = builder.build();
-    String _uriMsj = bookshelfXml.toString();
-    print("_uriMsj: $_uriMsj");
-
-    String _uri = widget.pushData[0]["decodedUrl"];
-    var _responseOtp = await postOTP(_uri, _uriMsj);
-    print("_responseOtp: $_responseOtp");
-  }
-
-  Future<String> postOTP(String _uri, String _message) async {
-    HttpClient client = new HttpClient();
-    HttpClientRequest request = await client.postUrl(Uri.parse(_uri));
-    request.write(_message);
-    HttpClientResponse response = await request.close();
-    StringBuffer _buffer = new StringBuffer();
-    await for (String a in await response.transform(utf8.decoder)) {
-      _buffer.write(a);
-    }
-    print("_buffer.toString: ${_buffer.toString()}");
-    return _buffer.toString();
   }
 
   @override
@@ -152,7 +157,7 @@ class _PhotoUploadPageState extends State<PhotoUploadPage> {
                               child: PositiveActionButton(
                                 child: Text("Evrakı Gönder",
                                     style: AppTheme.textButtonPositive()),
-                                onPressed: () => _sendOTP(),
+                                onPressed: () => prepareXmlData(),
                               ),
                             ),
                           ],

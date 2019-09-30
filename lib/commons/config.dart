@@ -135,6 +135,7 @@ class Config {
   static const String WS_END_POINT_URL_TEST = "https://erpapimwtest.yurticikargo.com/erp/";
   static const String WS_PORTAL_END_POINT_URL_PROD = "https://mobilehrcms.yurticikargo.com/rest/";
   static const String WS_PORTAL_END_POINT_URL_TEST = "https://mobilehrcmstest.yurticikargo.com/rest/";
+  static const int HTTP_TIME_OUT = 60;
 
 
   static String WS_END_POINT_URL = WS_END_POINT_URL_PROD;

@@ -131,13 +131,14 @@ class _HomeState extends State<HomePage> {
       String barcode = await BarcodeScanner.scan();
       data = barcode.split(":");
       token = data[1];
+      print(data[0]);
       print(ascii.decode(HEX.decode(data[0])));
 
       setState(() {
         this.barcode = barcode;
         decodedUrl = ascii.decode(HEX.decode(data[0]));
         _done = true;
-        _pushData.add({"token": token, "postUrl": decodedUrl});
+        _pushData.add({"token": token, "decodedUrl": decodedUrl});
       });
     } on PlatformException catch (e) {
       if (e.code == BarcodeScanner.CameraAccessDenied) {

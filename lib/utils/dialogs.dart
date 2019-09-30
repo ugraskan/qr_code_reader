@@ -9,6 +9,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_qrcode_app/commons/config.dart';
 import 'package:flutter_qrcode_app/themes/theme.dart';
 import 'package:flutter_qrcode_app/utils/image_picker_handler.dart';
+import 'package:flutter_qrcode_app/widgets/positive_action_button.dart';
 
 const kTaskBarHeightMaterial = 50.0;
 const kTaskBarHeightCupertino = 42.0;
@@ -83,7 +84,7 @@ abstract class Dialogs {
       context: context,
       builder: (BuildContext context) {
         return CupertinoAlertDialog(
-          title: title != null ? Text(title) : null,
+          title:   Text("Bilgilendirme") ,
           content: Padding(
             padding: EdgeInsets.fromLTRB(10, 10, 10, 18),
             child: Text(message, style: AppTheme.textAlertBodyGray()),
@@ -97,7 +98,7 @@ abstract class Dialogs {
               children: <Widget>[
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: FlatButton(
+                  child: PositiveActionButton(
                     child: Text("Tamam", style: AppTheme.textButtonPositive()),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
